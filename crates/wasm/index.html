@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calamus — Supernote .note viewer</title>
+<style>
+  body { font-family: sans-serif; max-width: 900px; margin: 2em auto; background: #f5f5f5; }
+  h1 { font-size: 1.4em; }
+  #info { margin: 1em 0; padding: 0.8em; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: none; }
+  #info dt { font-weight: bold; display: inline; }
+  #info dd { display: inline; margin: 0 1em 0 0; }
+  canvas { display: block; margin: 1em 0; border: 1px solid #ccc; max-width: 100%; height: auto; }
+  #pages { display: flex; flex-direction: column; align-items: center; }
+  label { display: inline-block; padding: 0.6em 1.2em; background: #4a90d9; color: #fff; border-radius: 4px; cursor: pointer; }
+  label:hover { background: #357abd; }
+  input[type=file] { display: none; }
+  #status { margin: 1em 0; color: #666; }
+</style>
+</head>
+<body>
+<h1>Calamus — Supernote .note viewer</h1>
+<label>Open .note file <input type="file" id="file-input" accept=".note"></label>
+<div id="status"></div>
+<div id="info"></div>
+<div id="pages"></div>
+
+<script type="module">
+import init, { parse, render_page } from './pkg/calamus_wasm.js';
+
+const status = document.getElementById('status');
+const info = document.getElementById('info');
+const pages = document.getElementById('pages');
+
+async function load() {
+  status.textContent = 'Loading WASM module...';
+  await init();
+  status.textContent = 'Ready. Select a .note file to view.';
+}
+
+async function handleFile(file) {
+  status.textContent = `Loading ${file.name}...`;
+  pages.innerHTML = '';
+  info.style.display = 'none';
+
+  const buffer = await file.arrayBuffer();
+  const data = new Uint8Array(buffer);
+
+  let notebook;
+  try {
+    notebook = JSON.parse(parse(data));
+  } catch (e) {
+    status.textContent = `Error parsing file: ${e.message}`;
+    return;
+  }
+
+  info.innerHTML = `
+    <dl>
+      <dt>File:</dt><dd>${file.name}</dd>
+      <dt>Device:</dt><dd>${notebook.device || 'unknown'}</dd>
+      <dt>Signature:</dt><dd>${notebook.signature}</dd>
+      <dt>Pages:</dt><dd>${notebook.page_count}</dd>
+      <dt>Size:</dt><dd>${notebook.page_width} x ${notebook.page_height}</dd>
+    </dl>`;
+  info.style.display = 'block';
+
+  for (let i = 0; i < notebook.page_count; i++) {
+    status.textContent = `Rendering page ${i + 1} of ${notebook.page_count}...`;
+
+    let rgba;
+    try {
+      rgba = render_page(data, i);
+    } catch (e) {
+      status.textContent = `Error rendering page ${i}: ${e.message}`;
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = notebook.page_width;
+    canvas.height = notebook.page_height;
+    const ctx = canvas.getContext('2d');
+    const imageData = new ImageData(
+      new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.byteLength),
+      notebook.page_width,
+      notebook.page_height
+    );
+    ctx.putImageData(imageData, 0, 0);
+
+    const label = document.createElement('div');
+    label.textContent = `Page ${i + 1}`;
+    label.style.fontWeight = 'bold';
+    label.style.marginTop = '1em';
+    pages.appendChild(label);
+    pages.appendChild(canvas);
+  }
+
+  status.textContent = `Rendered ${notebook.page_count} page(s).`;
+}
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+  if (e.target.files.length > 0) handleFile(e.target.files[0]);
+});
+
+load();
+</script>
+</body>
+</html>
