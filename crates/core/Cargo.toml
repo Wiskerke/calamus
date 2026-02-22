@@ -1,0 +1,26 @@
+[package]
+name = "calamus"
+version = "0.1.0"
+edition = "2024"
+license = "BSD-3-Clause"
+authors = ["Johan Wiskerke"]
+description = "A Rust library for parsing Supernote .note files"
+
+[lib]
+name = "calamus"
+path = "src/lib.rs"
+
+[features]
+default = ["render"]
+stroke = ["dep:base64", "dep:zerocopy"]
+render = ["stroke", "dep:image"]
+
+[dependencies]
+anyhow = "1.0"
+base64 = { version = "0.22.1", optional = true }
+image = { version = "0.25", optional = true }
+zerocopy = { version = "0.8", features = ["derive"], optional = true }
+
+[dev-dependencies]
+tempfile = "3.26"
+image = "0.25"

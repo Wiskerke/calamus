@@ -1,0 +1,14 @@
+[package]
+name = "calamus-wasm"
+version = "0.1.0"
+edition = "2024"
+license = "BSD-3-Clause"
+authors = ["Johan Wiskerke"]
+description = "WASM bindings for Calamus Supernote .note file renderer"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+calamus = { path = "../core", default-features = false }
+wasm-bindgen = "0.2"
